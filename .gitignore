@@ -2,3 +2,7 @@ venv
 .idea
 __pycache__
 labot/protocol.pk
+db.sqlite
+database/dofus_data/i18n_fr.json
+database/dofus_data/Items.json
+database/dofus_data/ItemTypes.json
