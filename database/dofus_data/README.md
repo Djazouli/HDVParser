@@ -1,4 +1,9 @@
-Obtained with PyDofus
+
+
+In this folder, there should be 3 files, that you obtain with PyDofus.
+* i18n_fr.json
+* Items.json
+* ItemTypes.json
 
 Items.json is obtained by decompiling Items.d2o
 

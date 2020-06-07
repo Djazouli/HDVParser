@@ -4,6 +4,11 @@ from database.models import *
 from database.utils import get_session
 
 def add_names():
+    """
+    Add names to Items and Subcategories where name is missing by reading Items.json, ItemTypes.json and i18n_fr.json,
+    all extracted from source thanks to PyDofus
+    :return:
+    """
     with open(os.path.join("dofus_data", "i18n_fr.json")) as f:
         names = json.load(f).get("texts")
     session = get_session()
