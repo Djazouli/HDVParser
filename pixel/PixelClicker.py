@@ -20,7 +20,7 @@ class PixelClicker(Thread):
         self.stop_event = stop_event
         self.actions = action_queue
         if self.actions.empty():
-            self.actions.put(GoToCategoriesTop())
+            self.actions.put(ClickNextCategory())
 
 
     def run(self):
