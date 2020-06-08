@@ -4,55 +4,13 @@ from time import sleep
 import cv2
 import numpy as np
 import random
-
-
-PYGUI_RES = (1680, 1050)
-SCREENSHOT_RES = (3360, 2100)
+from pixel.utils import *
 
 import pathlib
 BASE_FOLDER = pathlib.Path(__file__).parent.absolute()
 
 import logging
 logger = logging.getLogger("PIXEL")
-
-def convert_opencv_pos(pos: tuple):
-    """
-    On retina screen, you need to adjust
-    :param pos:
-    :return:
-    """
-    x, y = pos
-    return (x/SCREENSHOT_RES[0]*PYGUI_RES[0], y/SCREENSHOT_RES[1]*PYGUI_RES[1])
-
-def convert_pyautogui_pos(pos: tuple):
-    """
-    On retina screen, you need to adjust
-    :param pos:
-    :return:
-    """
-    x, y = pos
-    return (x/PYGUI_RES[0]*SCREENSHOT_RES[0], y/PYGUI_RES[1]*SCREENSHOT_RES[1])
-
-def offset_to_center(image: np.array):
-    """
-    Get the middle of an image
-    :param image:
-    :return:
-    """
-    x, y = image.shape[1], image.shape[0]
-    return x // 2, y // 2
-
-def apply_offset(locations: np.array, offset: tuple):
-    """
-    Modify entry array locations to apply to every row the offset
-    :param locations:
-    :param offset:
-    :return:
-    """
-    for i in range(locations.shape[0]):
-        locations[i][0] += offset[0]
-        locations[i][1] += offset[1]
-
 
 
 class Action():
@@ -80,6 +38,7 @@ class ClickOnUnclickedCategories(Action):
         unclicked_filepath = os.path.join(BASE_FOLDER, "images", "unclicked_category.png")
         image = cv2.imread(unclicked_filepath)
         screenshot = np.array(pyautogui.screenshot().convert("RGB"))
+        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
         # TODO: Could screen only a region
         result = cv2.matchTemplate(image, screenshot, method)
         loc = np.where(result >= 0.8)
@@ -107,28 +66,107 @@ class ClickOnUnclickedCategories(Action):
             # Wait that all clicks are taken into account
             sleep(1)
             wait = self.get_visible_unclicked_categories().shape[0]
-        pyautogui.scroll(-cont)
+        scroll(-cont)
         self.did_something = bool(cont)
+
+class GoToCategoriesTop(Action):
+    def __init__(self):
+        super().__init__()
+
+    def execute(self) -> None:
+        pyautogui.moveTo(*SOMEWHERE_ON_CATEGORIES) # Somewhere on categories
+        scroll_max(1)
+        return
+
+    def next_action(self) -> Action:
+        return ClickNextCategory()
+
+class ClickNextCategory(Action):
+    def __init__(self):
+        super().__init__()
+        self.finished = False
+
+    def get_clicked_pos(self) -> tuple or None:
+        pyautogui.screenshot("test.png", region=CATEGORIES_ZONE)
+        located = pyautogui.locateCenterOnScreen(
+            os.path.join(BASE_FOLDER, "images", "clicked_category.png"),
+            confidence=0.8,
+            region=CATEGORIES_ZONE,
+        )
+        #if located is not None:
+        #    located = located[0] + CATEGORIES_ZONE[0], located[1] + CATEGORIES_ZONE[1]
+        return located
+
+    def get_visible_unclicked_categories(self):
+        method = cv2.TM_CCOEFF_NORMED
+        unclicked_filepath = os.path.join(BASE_FOLDER, "images", "unclicked_category.png")
+        image = cv2.imread(unclicked_filepath)
+        screenshot = np.array(pyautogui.screenshot().convert("RGB"))
+        # TODO: Could screen only a region
+        result = cv2.matchTemplate(image, screenshot, method)
+        loc = np.where(result >= 0.8)
+        X = np.average(loc[1])  # all on the same column
+        Y = []
+        for y in loc[0]:
+            if not Y or abs(Y[-1] - y) > 3:
+                Y.append(y)
+        X = [X] * len(Y)
+        locations = np.array(list(zip(X, Y)), np.int32)
+        apply_offset(locations, offset_to_center(image))
+        return locations
+
+    def get_next_unclicked(self, clicked_pos: tuple=None) -> tuple or None:
+        unclicked_positions = self.get_visible_unclicked_categories()
+        for unclicked_position in unclicked_positions:
+            unclicked_position = convert_opencv_pos(unclicked_position)
+            if clicked_pos is not None and unclicked_position[1] < clicked_pos[1]:
+                continue
+            return unclicked_position[0], unclicked_position[1]
+        return None
+
+    def execute(self) -> None:
+        clicked_pos = self.get_clicked_pos()
+        if clicked_pos is not None:
+            clicked_pos = convert_opencv_pos(clicked_pos)
+            pyautogui.moveTo(*clicked_pos)
+            sleep(.2)
+            scroll(-1)
+            sleep(.5)
+            new_clicked = convert_opencv_pos(self.get_clicked_pos())
+            if tuple_diff(clicked_pos, new_clicked) < 10:
+                # scroll didn't do anything
+                clicked_pos = self.get_next_unclicked(new_clicked)
+            pyautogui.click(*new_clicked) # Uncheck box
+            if clicked_pos is None:
+                self.finished = True
+                return
+            pyautogui.click(*clicked_pos) # check next category
+        else:
+            clicked_pos = self.get_next_unclicked()
+            pyautogui.click(*clicked_pos)
+        sleep(3.) # Depends on how fast your computer can load the items
+        return
+
+    def next_action(self) -> Action:
+        return GoToCategoriesTop() if self.finished else GoToBottomItemsAndClick()
 
 class ClickOnTopItem(Action):
     """
     Click on the item at the top of the list, then scroll up
     """
-    click_pos = (514, 214)
-    screen_pos = convert_pyautogui_pos((499, 199))
-    screen_size = convert_pyautogui_pos((27, 27))
+    click_pos = TOP_ITEM_POS
     def __init__(self):
         super().__init__()
         self.old = None
 
     def screenshot_minia(self) -> np.array:
-        return np.array(pyautogui.screenshot(region=(*self.screen_pos, *self.screen_size)).convert("LA"))
+        return np.array(pyautogui.screenshot(region=TOP_ITEM_IMAGE_REGION).convert("LA"))
 
 
     def execute(self) -> None:
         pyautogui.click(x=self.click_pos[0], y=self.click_pos[1])
         self.old = self.screenshot_minia()
-        pyautogui.scroll(1)
+        scroll(1)
         sleep(random.randint(1,5) / 10) # Dont make it too obvious we're a bot
 
     def next_action(self) -> Action or None:
@@ -142,7 +180,7 @@ class ClickOnTopItem(Action):
             comparison = (new == self.old).all()
             if comparison:
                 logger.info("Reached top of the HDV")
-                return None
+                return ClickNextCategory()
         return ClickOnTopItem()
 
 class GoToBottomItemsAndClick(Action):
@@ -154,16 +192,15 @@ class GoToBottomItemsAndClick(Action):
         super().__init__()
 
     def execute(self) -> None:
-        # Absolute values are found by moving my mouse around and triggering pyautogui.position()
-        pyautogui.moveTo(499, 813)
-        pyautogui.scroll(-4000)
+        pyautogui.moveTo(ITEMS_COLUMN_X, BOTTOM_LINE_Y)
+        scroll_max(-1)
         sleep(1)
         nbr_of_items = 13
         for i in range(nbr_of_items):
-            y = 840 - i*(840-214)/nbr_of_items
-            pyautogui.click(499, y)
+            y = BOTTOM_LINE_Y - i*(BOTTOM_LINE_Y-TOP_ITEM_POS[1])/nbr_of_items
+            pyautogui.click(ITEMS_COLUMN_X, y)
             sleep(1.)
-            pyautogui.click(499, y)
+            pyautogui.click(ITEMS_COLUMN_X, y)
             sleep(1.)
 
     def next_action(self) -> Action or None:

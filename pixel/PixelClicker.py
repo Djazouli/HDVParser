@@ -4,7 +4,7 @@ from time import sleep
 import pyautogui
 import logging
 
-from pixel.actions import ClickOnUnclickedCategories, ClickOnTopItem, GoToBottomItemsAndClick
+from pixel.actions import ClickOnUnclickedCategories, GoToCategoriesTop, GoToBottomItemsAndClick, ClickNextCategory
 
 pyautogui.FAILSAFE = True
 logger = logging.getLogger("PIXEL")
@@ -20,7 +20,7 @@ class PixelClicker(Thread):
         self.stop_event = stop_event
         self.actions = action_queue
         if self.actions.empty():
-            self.actions.put(ClickOnUnclickedCategories())
+            self.actions.put(GoToCategoriesTop())
 
 
     def run(self):
