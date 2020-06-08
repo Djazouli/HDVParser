@@ -41,6 +41,39 @@ For example, the mitm uses a Queue to send data to the database.
 All of them share a stopping event, so we can gracefully stop an any time.
 In the future, the **mitm** may be used to detect bugs, and send Actions to the pixel, that he needs to execute.
 
+### MITM
+The MITM is pretty straightforward. It sniffs packets from the connection between the client and the server.
+Then, thanks to the protocol decrypted from the source files using [PyDofus](https://github.com/balciseri/PyDofus), it parses the packets.
+Once the packets are parsed, we filter them by id (we are only looking for the messages of type *ExchangeTypesItemsExchangerDescriptionForUserMessage*).
+Using these packets, we construct dictionnaries with the shape
+```python
+    item = {
+        "category": objectType,
+        "item_gid": objectGID,
+        "price": itemPrice,
+        "quantity": itemQuantity,
+    }
+``` 
+and we send them through a Queue to a Database.
+
+### Database
+The database thread continuously reads the queue mentionned previously, and use these packets to create entries in the database.
+
+### Pixel
+The pixel bot interacts with the client using image recognition. 
+The pixel bot executes "Actions", that are classes containing 2 methods: execute(), that actually does some actions, and a function next_action(),
+that returns the Action to execute afterward, depending on what happened during the previous execution.
+For example, here the Pixel bot works as follow:
+* We start with the HDV window open
+* We then check on the left of the screen, containing the category list. using template matching, we find the first unchecked category, and proceed to checkit.
+* Then, we scroll all the way down the list of items, and click on them one by one, until we reach the top of the window.
+* Once we reached the top of the window, we click on the top item, and scroll one level up, then we start again.
+* We do this until scrolling does not change anything (we know this by using image recognition, to see if the item at the top of the window changed or not when we scrolled).
+* We scrolling doesn't change anything, we go back to the left of the screen, uncheck the previous category, scroll, and check the next one.
+* We do this until we reached the bottom of the categories' list. Then, we scroll all the way up, and start again.
+
+
+
 ## Improvements
  * Pixel is pretty slow. It is limited by the rendering unit of your computer. For example,
  mine take a while to render all the items of a category, so we are loosing some time. Moreover, the HDV is sometimes a bit buggy, so you have to sleep a lot, which makes the bot quite slow.
