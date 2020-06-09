@@ -72,7 +72,7 @@ For example, here the Pixel bot works as follow:
 * We scrolling doesn't change anything, we go back to the left of the screen, uncheck the previous category, scroll, and check the next one.
 * We do this until we reached the bottom of the categories' list. Then, we scroll all the way up, and start again.
 
-
+To stop the pixel part, and thus, thanks the stop_event, all the bot, you can just use pyautogui Failsafe and move your mouse to a corner of your screen.
 
 ## Improvements
  * Pixel is pretty slow. It is limited by the rendering unit of your computer. For example,
