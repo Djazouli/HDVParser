@@ -14,8 +14,8 @@ This is coded mostly in Python, with pyautogui used to interact with the client 
 Data is stored in an sqlite database using SQLAlchemy. 
 
 As I already had some previous experience with Django, I decided to use SQLAlchemy to store my data, because the very purpose of this project is to learn something new.
-Right now, there is no data visualization, but when I decided to continue this project and implement it, I will certainly use the opportunity to discover Flask and a Javascript framework.
-But this may be overkill, I have to give it some thoughts.
+The data visualization will be done through a Flask-powered API, and a React.js frontend. I am using this project to learn Flask framework, as I am already familiar with Django, so the code may not be the optimal one.
+
 
 To parse the messages received from the server, I used some amazing work called [LaBot](https://github.com/louisabraham/LaBot).
 

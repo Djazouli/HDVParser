@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-import os
+import os, json
 from pathlib import Path
 
 import database.models as models
@@ -19,6 +19,26 @@ CACHE_TIME = 10 * 60 # seconds
 
 def get_session()-> Session:
     return Session()
+
+def get_items():
+    session = get_session()
+    items = session.query(models.Item).all()
+    items = [{"value": item.id, "label": item.item_name} for item in items] # Cheating here
+    session.close()
+    return items
+
+def get_item_prices(item_id: int):
+    session = get_session()
+    res = {}
+    prices = session.query(models.PriceEntry).filter_by(item_id=item_id).all()
+    for price in prices:
+        timestamp = int(price.created_ts.timestamp()) * 1000
+        quantity = price.quantity
+        data = res.get(timestamp, {})
+        data[quantity] = price.price
+        res[timestamp] = data
+    return res
+
 
 class ItemSaver(Thread):
     """
