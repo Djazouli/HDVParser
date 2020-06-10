@@ -6,3 +6,4 @@ db.sqlite
 i18n_fr.json
 Items.json
 ItemTypes.json
+node_modules
